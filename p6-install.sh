@@ -48,8 +48,8 @@ cd "rakudo-$1"
 #Configure and make Rakudo.
 rm -rf $HOME/.perl6
 perl Configure.pl --gen-moar --gen-nqp --backends=moar --prefix=$prefix 2>&1 >>"$log"
-make test
-make install
+make -j 8 test
+make -j 8 install
 code=$?
 if [[ $code -ne 0 ]]; then
     warn "A problem occured when configuring and making Rakudo."
@@ -61,7 +61,7 @@ cd ..
 #Install Zef.
 git clone https://github.com/ugexe/zef.git;
 cd zef;
-perl6 -Ilib bin/zef install . 2>&1 >>"$log"
+/usr/local/bin/perl6 -Ilib bin/zef install . 2>&1 >>"$log"
 code=$?
 if [[ $code -ne 0 ]]; then
     warn "A problem occured when installing Zef."
