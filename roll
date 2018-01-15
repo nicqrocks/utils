@@ -2,25 +2,19 @@
 
 #Roll some dice
 
-grammar Dice {
-	token TOP {
-		$<roll-num>=(\d+) 'd' $<die>=(\d+) [ '+' $<set>=(\d+) ]?
-	}
-}
-
-class DiceAct {
-	method TOP($/) {
-		my $die = $<die>.Int;
-		my $set = $<set>.defined ?? $<set>.Int !! 0;
-		my @rolls = (1..$die).roll xx $<roll-num>;
-		my $total = $set + [+] @rolls;
-
-		make { :$set, :@rolls, :$total };
-	}
-}
-
 sub MAIN(Str $roll) {
-	my $parse = Dice.parse($roll, actions => DiceAct.new).made;
-	say "$parse<total>\: { $parse<rolls>.join(' ') } { "+$parse<set>" if $parse<set> }";
-}
+	#Make some vars.
+	my (@rolls, $total, $const) = 0;
 
+	#Pull apart the given string into the parts needed.
+	given $roll.split(['d', '+']) {
+		@rolls = (1..$_[1]).roll xx $_[0];
+		$total = [+] @rolls;
+		$const = $_[2] // 0;
+		$total += $const;
+	}
+
+	print "$total: { @rolls.join(' ') }";
+	print " +$const" if $const;
+	print "\n";
+}
