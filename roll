@@ -1,0 +1,26 @@
+#!/usr/bin/env perl6
+
+#Roll some dice
+
+grammar Dice {
+	token TOP {
+		$<roll-num>=(\d+) 'd' $<die>=(\d+) [ '+' $<set>=(\d+) ]?
+	}
+}
+
+class DiceAct {
+	method TOP($/) {
+		my $die = $<die>.Int;
+		my $set = $<set>.defined ?? $<set>.Int !! 0;
+		my @rolls = (1..$die).roll xx $<roll-num>;
+		my $total = $set + [+] @rolls;
+
+		make { :$set, :@rolls, :$total };
+	}
+}
+
+sub MAIN(Str $roll) {
+	my $parse = Dice.parse($roll, actions => DiceAct.new).made;
+	say "$parse<total>\: { $parse<rolls>.join(' ') } { "+$parse<set>" if $parse<set> }";
+}
+
