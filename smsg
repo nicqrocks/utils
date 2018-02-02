@@ -61,3 +61,5 @@ multi sub MAIN(:timeout(:$t), :username(:$u), :icon(:$i)) {
 		}
 	}
 }
+
+signal(SIGINT).tap: { note "Shutting down…"; }
