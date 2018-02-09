@@ -7,53 +7,66 @@ use WebService::Slack::Webhook;
 my $url = $*HOME.add(".slack-url").slurp.chomp;
 my $slack = WebService::Slack::Webhook.new(:$url);
 
-multi sub MAIN($msg?, :file(:$f), :username(:$u), :icon(:$i)) {
-	nextsame unless $msg || $f;
-	my %data;
-	if $msg {%data<text> = $msg;}
-	if $f {%data<text> ~= ' ```' ~ $f.IO.slurp ~ '```';}
-	if $u {%data<username> = $u;}
-	if $i {%data<icon_emoji> = $i;}
-	$slack.send(%data);
+multi sub MAIN($msg, :username(:$u), :icon(:$i)) {
+	$slack.send(%(
+		text       => $msg,
+		username   => $u,
+		icon_emoji => $i
+	));
 }
 
-class Queue {
-	has Str $!cache = "";
-	has WebService::Slack::Webhook $.slack is required;
-	has $.last = now;
-	has $.timeout = 0;
 
-	method add($msg) {
-		$!cache ~= $msg;
-		$!last = now;
-		self.timer;
-	}
-	method send() {
-		my $msg = $!cache;
-		$!cache = "";
-		$slack.send("```$msg```") unless $msg;
-	}
-	method timer() {
-		Promise.in($!timeout).then:
-			{
-				if ((now - $!last) > $!timeout) { self.send; }
+multi sub MAIN(:file(:$f)!, :username(:$u), :icon(:$i)) {
+	$slack.send(%(
+		text       => ' ```' ~ $f.IO.slurp ~ '```',
+		username   => $u,
+		icon_emoji => $i
+	));
+}
+
+
+multi sub MAIN(:timeout(:$t) = 10, :username(:$u), :icon(:$i)) {
+	my $stdin = $*IN.Supply(:size<10>);
+	my $buf = "";
+
+	react {
+		whenever signal(SIGINT) {
+			say "Killed after { now - INIT now}";
+			exit;
+		}
+
+        whenever $stdin -> $msg {
+          $buf ~= $msg;
+         LAST {
+				$slack.send(%(
+					text       => ' ```' ~ $buf ~ '```',
+					username   => $u,
+					icon_emoji => $i
+				)) unless $buf ~~ /^ \s+ $/;
+				done;
 			}
+        }
+
+		whenever Supply.interval($t) {
+			my $msg;
+			
+			if $buf ~~ /\n$/ {
+				$msg = $buf;
+				$buf = "";
+			} else {
+				my @l = $buf.lines;
+				my $li = @l.end;
+				$msg = @l[0..($li-1)].join("\n");
+				$buf = @l[$li];
+			}
+			
+			$slack.send(%(
+				text       => '```' ~ $msg ~ '```',
+				username   => $u,
+				icon_emoji => $i
+			)) unless $buf ~~ /^ \s+ $/;
+		}
 	}
 }
 
-multi sub MAIN(:timeout(:$t), :username(:$u), :icon(:$i)) {
-	my %data;
-	if $u {%data<username> = $u;}
-	if $i {%data<icon_emoji> = $i;}
-	$slack.defaults = %data;
-
-	if $t {
-		my $q = Queue.new: timeout => $t, :$slack;
-		my $s = $*IN.Supply(:size<1>).tap: -> $in { $q.add: $in; };
-		$s.wait;
-		$q.send;
-	} else {
-		my $msg = $*IN.slurp;
-		$slack.send: '```' ~ $msg ~ '```';
-	}
-}
+signal(SIGINT).tap: { note "Shutting down…"; }
