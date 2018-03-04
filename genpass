@@ -4,7 +4,7 @@
 sub MAIN(Int $num = 1) {
 	my @a = (^$num).race.map: {$=finish.lines.pick(2).join(<$ # @ ^ & %>.pick)};
 	@a>>.say;
-	say now - INIT now;
+	#say now - INIT now;
 }
 
 =finish
