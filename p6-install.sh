@@ -48,8 +48,7 @@ cd "rakudo-$1"
 #Configure and make Rakudo.
 rm -rf $HOME/.perl6
 perl Configure.pl --gen-moar --gen-nqp --backends=moar --prefix=$prefix 2>&1 >>"$log"
-make -j 8 test
-make -j 8 install
+make -j8 test && make -j8 install
 code=$?
 if [[ $code -ne 0 ]]; then
     warn "A problem occured when configuring and making Rakudo."
