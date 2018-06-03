@@ -29,6 +29,8 @@ sub USAGE() {
 
 		--format	The file format to download the publication into.
 					Defaults to EPUB.
+
+		--out		Give a name for the file downloaded.
 	EOF
 }
 
@@ -37,7 +39,8 @@ sub MAIN(
 	:$pub    = %publication<workbook>,
 	:$date   = $ym,
 	:$format = 'EPUB',
-	:$lang   = 'E'
+	:$lang   = 'E',
+	:$out
 ) {
 	#make the URL to request the download link.
 	my $jurl =
@@ -55,16 +58,18 @@ sub MAIN(
 	my $url = $json<files>{$lang.uc}{$format.uc}[0]<file><url>;
 
 	#Name the output file.
-	my $file = $pub
-		~ ($date ?? "-$date" !! "")
-		~ ($lang ?? "-$lang" !! "")
-		~ "\.{$format.lc}";
+	unless $out.defined {
+		$out = $pub
+			~ ($date ?? "-$date" !! "")
+			~ ($lang ?? "-$lang" !! "")
+			~ "\.{$format.lc}";
+	}
 
 	#Download the file's contents and save it.
 	say "Getting: $url";
-	say "Into file: $file";
+	say "Into file: $out";
 
-	my $fh = $file.IO.open: :w;
+	my $fh = $out.IO.open: :w;
 	my $curl = Proc::Async.new: «curl $url»;
 	$curl.stdout(:bin).tap: -> $chunk { $fh.write: $chunk }
 	await $curl.start;
